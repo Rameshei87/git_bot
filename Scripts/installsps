@@ -1,0 +1,452 @@
+#! /bin/bash 
+set +x 
+
+#Checking whether there is root permission.
+User=`/usr/bin/id | cut -f1 -d' ' | cut -f2 -d'(' | cut -f1 -d')'`
+if [ "$User" = "root" ]
+then
+        echo "You are installing SPS with root permission." > /dev/null
+else
+        echo "You are running the install script without root permission."
+        #echo "The install script requires root permission."
+        #echo "Exiting ...."
+        #exit
+fi
+
+#Checking whether the arguments are passed correctly.
+if [ $# -ne 1 ]
+then
+	echo " "
+	echo "Usage : $0 < sps tar file name > "
+	echo " "
+	exit 0
+fi
+
+SPS_TAR_FILE="$1"
+SPS_TAR_FILENAME="$1"
+Flag=`echo $SPS_TAR_FILENAME | grep "/"`
+
+#Find the File name from the path of the file
+while [ "$Flag" != "" ]
+do
+  SPS_TAR_FILENAME=`echo $SPS_TAR_FILENAME | cut -f2- -d'/'`
+  Flag=`echo $SPS_TAR_FILENAME | grep "/"`
+done
+
+VERSION=`echo $SPS_TAR_FILENAME | cut -f2 -d'_' | cut -f1-4 -d'.'`
+
+black='\E[1;34;30m'
+red='\E[1;33;31m'
+green='\E[1;33;32m'
+yellow='\E[1;33;34m'
+blue='\E[1;33;34m'
+magenta='\E[1;35;34m'
+cyan='\E[1;36;34m'
+white='\E[1;37;34m'
+Reset="tput sgr0"      #  Reset text attributes to normal
+
+clear
+echo -e "$blue""******************************************************************"; $Reset 
+echo -e "$blue""*                                                                *"; $Reset
+echo -e "$blue""*                 SPS Software Installation                      *"; $Reset
+echo -e "$blue""*                       Version $VERSION                          *"; $Reset
+echo -e "$blue""*                Tecnotree Convergence Limited                   *"; $Reset
+echo -e "$blue""*                    (c) Copyright 2009                          *"; $Reset
+echo -e "$blue""*                                                                *"; $Reset
+echo -e "$blue""******************************************************************"; $Reset
+
+BAR_WIDTH=100
+BAR_CHAR_START="["
+BAR_CHAR_END="]"
+BAR_CHAR_EMPTY="."
+BAR_CHAR_FULL="="
+BRACKET_CHARS=4
+LIMIT=100
+MAX_PERCENT=100
+
+print_progress_bar()
+{
+        # Calculate how many characters will be full.
+        let "full_limit = ((($1 - $BRACKET_CHARS) * $2) / $LIMIT)"
+
+        # Calculate how many characters will be empty.
+        let "empty_limit = ($1 - $BRACKET_CHARS) - ${full_limit}"
+
+        # Prepare the bar.
+        bar_line="${BAR_CHAR_START}"
+        for ((j=0; j<full_limit; j++)); do
+                bar_line="${bar_line}${BAR_CHAR_FULL}"
+        done
+
+        for ((j=0; j<empty_limit; j++)); do
+                bar_line="${bar_line}${BAR_CHAR_EMPTY}"
+        done
+
+        bar_line="${bar_line}${BAR_CHAR_END}"
+
+        printf "%3d%% %s" $2 ${bar_line}
+}
+
+export  MAIN_DIR=`pwd`
+
+#Read the install directory for the SPS
+while [ 1 ]  ;
+do
+	echo " "
+	echo "Please enter the ABSOLUTE path of the home directory for SPS." 
+	echo "This is the directory in which the SPS shall be installed."
+	echo "Press Enter for the default directory [$HOME/Tecnotree/Zeus]"
+	echo  "====> \c"
+	echo -e "$yellow"
+	read SPS_INSTALL_DIR 
+	echo -e "";$Reset
+
+	export default_dir=FALSE
+
+	if [ "$SPS_INSTALL_DIR" = "" ]
+	then
+  		export SPS_INSTALL_DIR=$HOME/Tecnotree/SPS
+  		export default_dir=TRUE
+	fi
+
+	if [ "$default_dir" = "FALSE" ]
+	then
+		SPS_INSTALL_DIR="$SPS_INSTALL_DIR/Tecnotree/SPS"
+	fi
+
+
+	if [ -d $SPS_INSTALL_DIR ] && ( [ -d $SPS_INSTALL_DIR/Bin ] || [ -d $SPS_INSTALL_DIR/Conf ] || [ -d $SPS_INSTALL_DIR/Lib ] || [ -d $SPS_INSTALL_DIR/Logs ] || [ -d $SPS_INSTALL_DIR/OutputAdapter ] || [ -d $SPS_INSTALL_DIR/SessionLayer ] )
+	then
+	  echo -e "$red"
+	  echo " "
+	  echo "          |\ "
+	  echo "          | \        Some files are found in $SPS_INSTALL_DIR "
+	  echo " W        |  \       directory, which may be of previous installation."
+	  echo " A  |------   \      Still you want to continue with the installation?"
+	  echo " R  |          \     Pressing \"y\" will remove all the previous "
+	  echo " N  |          /     installation files."
+	  echo " I  |------   /      Pressing \"n\" will prompt for the new installation"
+	  echo " N        |  /       directory name. "
+	  echo " G        | /        " 
+	  echo "          |/         <y/n> : \c"
+	  echo -e ""; $Reset
+
+	  while [ 1 ] ;
+	  do 
+		echo -e "$yellow"
+	    read y_n
+		echo -e "";$Reset
+	    if [ "$y_n" = "y" ] || [ "$y_n" = "Y" ]
+	    then
+	      export status=TRUE
+	      break 
+	    elif [ "$y_n" = "n" ] || [ "$y_n" = "N" ]
+	    then
+	      export status=FALSE
+	      break 
+	    else 
+	      echo "Please enter y,Y,n or N"
+	    fi
+	  done
+	  
+	  if [ "$status" = "TRUE" ]
+	  then
+	    echo "Deleting previous files ............."
+
+	    echo "Deleting library files"
+	    if [ -d $SPS_INSTALL_DIR/Lib ]
+	    then
+	      rm -rf SPS_INSTALL_DIR/Lib
+	    fi
+
+	    echo "Deleting executables ............"
+	    if [ -d $SPS_INSTALL_DIR/Bin ]
+	    then
+	      rm -rf SPS_INSTALL_DIR/Bin
+	    fi
+
+	    echo "Deleting configuration files ............."
+	    if [ -d $SPS_INSTALL_DIR/Conf ]
+	    then
+	      rm -rf SPS_INSTALL_DIR/Conf
+	    fi	    
+
+		echo "Deleting Log files ............."
+        if [ -d $SPS_INSTALL_DIR/Logs ]
+        then
+          rm -rf SPS_INSTALL_DIR/Logs
+        fi
+
+		echo "Deleting Adapter files ............."
+        if [ -d $SPS_INSTALL_DIR/OutputAdapter ]
+        then
+          rm -rf SPS_INSTALL_DIR/OutputAdapter
+        fi
+		
+		echo "Deleting Session Layer files ............."
+        if [ -d $SPS_INSTALL_DIR/SessionLayer ]
+        then
+          rm -rf SPS_INSTALL_DIR/SessionLayer
+        fi
+	    break;
+	  fi
+
+	else
+	  break;
+	fi
+done
+
+echo -e "$green"
+echo " "
+echo " "
+echo "                          			$SPS_INSTALL_DIR                               			" 
+echo "                                  			|                                      			"
+echo "                                  			|                                      			"
+echo "          -----------------------------------------------------------------------           	"
+echo "          |                       |                       |              			|			"
+echo "          |                       |                       |              			|			"
+echo "         Bin/                    Conf/                    Lib/           		  Logs/			"
+echo "      ( binary             ( configuration        ( Default directory    		(Log files)		"
+echo "        files  )                data       )        for the library files ) 					"
+echo " "
+echo " "
+echo -e ""; $Reset
+
+#----------------------------------------------------------------------
+
+echo "\nThe Installation Process will start copying the files now."
+while [ 1 ] ;
+do 
+    	echo "Do you want to continue? <y/n> : \c"
+	read y_n
+    	if [ "$y_n" = "y" ] || [ "$y_n" = "Y" ]
+    	then
+        	export status=TRUE
+        	break 
+    	elif [ "$y_n" = "n" ] || [ "$y_n" = "N" ]
+    	then
+        	export status=FALSE
+        	break 
+    	else 
+        	echo "Please enter y,Y,n or N"
+    	fi
+done
+
+if [ "$status" = "FALSE" ]
+then
+    	echo "\nAborting the Installation Process...."
+    	exit 0
+fi
+
+
+if [ ! -d $SPS_INSTALL_DIR ] 
+then 
+        echo ""
+        echo "Directory $SPS_INSTALL_DIR does not exist. Creating $SPS_INSTALL_DIR ..."
+        mkdir -p $SPS_INSTALL_DIR 
+        if [ $? -ne 0 ] 
+        then 
+                echo ""
+                echo " Could not make the SPS HOME directory\n"
+                echo " Aborting the installation process ......\n" 
+                exit 1 
+        fi 
+        echo ""
+        echo "Created directory $SPS_INSTALL_DIR " 
+fi 
+
+#Make a copy of the tar file in /tmp
+cp $SPS_TAR_FILE /tmp/$SPS_TAR_FILENAME
+
+#Change the tar file to the /tmp/file.
+SPS_TAR_FILE=/tmp/$SPS_TAR_FILENAME
+
+echo "\nCopying files from media... "
+
+cd $SPS_INSTALL_DIR
+tar xvfo $SPS_TAR_FILE
+
+# Install the sub directories of the data directories which are not
+# present.
+		echo "Copying the configuration files ..........."
+	    if [ -d $SPS_INSTALL_DIR/Conf ]
+	      then
+		echo "do nothing" > /dev/null
+	      else
+		tar xvfo $SPS_TAR_FILE -C Conf
+            fi
+
+		echo "Copying the executables ..........."
+	    if [ -d $SPS_INSTALL_DIR/Bin ]
+	      then
+		echo "do nothing" > /dev/null
+	      else
+		tar xvfo $SPS_TAR_FILE -C Bin 
+            fi
+
+		echo "Copying the library files ..........."
+	    if [ -d $SPS_INSTALL_DIR/Lib ]
+	      then
+		echo "do nothing" > /dev/null
+	      else
+		tar xvfo $SPS_TAR_FILE -C Lib 
+            fi
+
+		if [ -d $SPS_INSTALL_DIR/Logs ]
+          then
+        echo "do nothing" > /dev/null
+          else
+        mkdir $SPS_INSTALL_DIR/Logs 
+            fi
+	
+		echo "Copying the Adapter files ..........."
+	    if [ -d $SPS_INSTALL_DIR/OutputAdapter ]
+	      then
+		echo "do nothing" > /dev/null
+	      else
+		tar xvfo $SPS_TAR_FILE -C OutputAdapter 
+            fi
+		
+		echo "Copying the Session Layer files ..........."
+	    if [ -d $SPS_INSTALL_DIR/SessionLayer ]
+	      then
+		echo "do nothing" > /dev/null
+	      else
+		tar xvfo $SPS_TAR_FILE -C SessionLayer 
+            fi
+		
+		tar xvfo $SPS_TAR_FILE listing
+
+echo " "
+echo " "
+echo -e "$blue"
+for ((i=0; i<=MAX_PERCENT; i++)); do
+	usleep 100000
+	print_progress_bar ${BAR_WIDTH} ${i}
+	echo -en "\r"
+done
+echo -e ""; $Reset
+echo ""
+
+
+#set the permissions of the files
+echo "changing the permisiions of the files"
+sleep 1
+chmod -R 755 $SPS_INSTALL_DIR/Bin
+chmod -R 766 $SPS_INSTALL_DIR/Conf
+chmod -R 755 $SPS_INSTALL_DIR/Lib
+chmod -R 766 $SPS_INSTALL_DIR/Logs
+chmod -R 766 $SPS_INSTALL_DIR/OutputAdapter
+chmod -R 766 $SPS_INSTALL_DIR/SessionLayer
+chmod 766 $SPS_INSTALL_DIR/listing
+chmod +x $SPS_INSTALL_DIR/sps
+
+#change the permission of the env_file.
+touch $SPS_INSTALL_DIR/env_file
+chmod -R 755 $SPS_INSTALL_DIR/env_file  2>/dev/null
+
+#Remove the temporary file 
+/bin/rm $SPS_TAR_FILE
+
+echo ""
+echo "All the files have been installed"
+echo " "
+
+#----------------------------------------------------------
+
+#---------------------------------------------------------- 
+#Checking sizes of binary files.
+ 
+echo "Checking whether the SPS Software is installed properly ..."
+
+ 
+if [ ! -f $SPS_INSTALL_DIR/listing ] 
+then  
+   	echo "Reference Sanity File does not exist." 
+   	echo "Couldn't check. Exiting ..."
+	echo " "	
+	echo "INSTALLATION PROCESS COMPLETE"
+	echo " "
+
+	echo "-----------------------------------------------------------" 
+	echo "|WARNING !                                                |"
+	echo "|~~~~~~~                                                  |"
+	echo "| Reference Sanity File does not exist. Couldn't varify   |"
+	echo "| the final installation.                                 |"
+	echo "|                                                         |"
+	echo "|NOTE:                                                    |"
+	echo "|~~~~                                                     |"
+	echo "| The list of environment variables has been put in       |"
+	echo "| $SPS_INSTALL_DIR/env_file.			        |"
+	echo "-----------------------------------------------------------" 
+	echo " "
+   	exit 1 
+fi 
+
+export status=1
+cd "$SPS_INSTALL_DIR/Bin"
+ 
+for i in `cat $SPS_INSTALL_DIR/listing | awk '{print $9}'` 
+do 
+if [ -f $i ] 
+then 
+    filesizea=`ls -l $i | awk '{print $5}'` 
+    filesizeb=`cat $SPS_INSTALL_DIR/listing | grep -w $i | head -1|  awk '{print $5}'` 
+    if [ "$filesizea" != "$filesizeb" ] 
+    then
+	echo $filesizea $filesizeb 
+        export status=0 
+        echo "$i: ERROR -- File corrupted"
+    fi 
+else 
+   echo "$i : File Missing "
+   echo "  "
+fi 
+
+done
+
+echo ""
+
+
+if [ "$status" = "0" ]
+then 
+    echo "Installation Check failed. Some of the files were corrupted or missing."
+    exit 1
+else
+    echo "All files were found in order "
+fi
+
+# Checking is success fule
+#-------------------------------------------------------------------------
+
+# Change the environment file and the S100mdsd
+
+ENV_FILE_NAME="$SPS_INSTALL_DIR/env_file"
+
+echo "SPS_HOME=$SPS_INSTALL_DIR" > $ENV_FILE_NAME
+echo "ADAPTER_HOME=$SPS_INSTALL_DIR/OutputAdapter" >> $ENV_FILE_NAME
+echo "SESSION_LAYER_HOME=$SPS_INSTALL_DIR/SessionLayer" >> $ENV_FILE_NAME
+echo "PATH=\$PATH:$SPS_INSTALL_DIR/Bin" >> $ENV_FILE_NAME
+echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$SPS_INSTALL_DIR/Lib:$SPS_INSTALL_DIR/OutputAdapter/Lib" >> $ENV_FILE_NAME
+
+echo "export SPS_HOME" >> $ENV_FILE_NAME
+echo "export PATH" >> $ENV_FILE_NAME
+
+
+echo "                                     /"
+echo "                                    /"	
+echo "INSTALLATION PROCESS COMPLETE   \  /"
+echo "                                 \/"
+
+
+echo "-----------------------------------------------------------" 
+echo "|NOTE:                                                    |"
+echo "|~~~~                                                     |"
+echo "| The list of environment variables has been put in       |"
+echo "| $SPS_INSTALL_DIR/env_file.                             	|"
+echo "-----------------------------------------------------------" 
+echo " "
+
+#---------------------------------------------------------- 
+
+

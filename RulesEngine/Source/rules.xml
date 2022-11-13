@@ -1,0 +1,36 @@
+<rule-config input-type="spsinput" output-type="spsoutput">
+	<packet id="0">
+		<rule consume-input="true" multi-occurrent="true">
+			<condition>
+				<and>
+					<greaterthan-string-string>
+						<get-parameter name="NM" action="" /> 
+							<string-constant value="9448865561" />
+					</greaterthan-string-string>
+					<lessthan-string-string>
+						<get-parameter name="NM" action="" /> 
+							<string-constant value="9448865559" />
+								</lessthan-string-string>
+				</and>
+			</condition>
+			<action>
+				<set-switchno>
+					<string-constant value="HLR1" /> 
+				</set-switchno>
+			</action>
+		</rule>
+		<rule consume-input="true" multi-occurrent="true">
+			<condition>
+				<greaterthan-string-string>
+					<get-parameter name="OM" action="" /> 
+						<string-constant value="08628233676" />
+					</greaterthan-string-string>
+			</condition>
+			<action>
+				<set-switchno>
+					<string-constant value="HLR2" /> 
+				</set-switchno>
+			</action>
+		</rule>
+	</packet>
+</rule-config>
