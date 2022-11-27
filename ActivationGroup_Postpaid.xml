@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Tree id="1">
+  <Record id="1">
+    <ActionGroupName>ActivationGroup</ActionGroupName>
+    <NetworkElement>HLR</NetworkElement>
+  </Record>
+  <Critical>Y</Critical>
+  <RetryRequired>N</RetryRequired>
+  <RollbackRequired>N</RollbackRequired>
+</Tree>
